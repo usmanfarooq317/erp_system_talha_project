@@ -228,6 +228,20 @@ app.post('/api/save-sale', async (req, res) => {
       await client.query('COMMIT');
       
       const completeSale = await getSaleWithItems(sale.id);
+
+      const formattedSale = {
+        id: completeSale.id,
+        customerId: completeSale.customer_id,
+        customerName: completeSale.customer_name || '',
+        date: completeSale.date,
+        previousPending: completeSale.previous_pending,
+        totalSale: completeSale.total_sale,
+        grandTotal: completeSale.grand_total,
+        paidNow: completeSale.paid_now,
+        pending: completeSale.pending,
+        products: completeSale.products
+      };
+
       res.json({ ok: true, record: completeSale });
 
     } catch (error) {
@@ -249,7 +263,14 @@ async function getSaleWithItems(saleId) {
   
   const sale = saleResult.rows[0];
   const itemsResult = await query('SELECT * FROM sale_items WHERE sale_id = $1', [saleId]);
-  sale.products = itemsResult.rows;
+
+  sale.products = itemsResult.rows.map(item => ({
+    productName: item.product_name,
+    quantity: item.quantity,
+    weight: item.weight,
+    pricePerKg: item.price_per_kg,
+    lineTotal: item.line_total
+  }));
   
   return sale;
 }
@@ -257,28 +278,55 @@ async function getSaleWithItems(saleId) {
 app.get('/api/sales', async (req, res) => {
   try {
     const result = await query(`
-      SELECT s.*, 
-             json_agg(
-               json_build_object(
-                 'productName', si.product_name,
-                 'quantity', si.quantity,
-                 'weight', si.weight,
-                 'pricePerKg', si.price_per_kg,
-                 'lineTotal', si.line_total
-               )
-             ) as products
+      SELECT 
+        s.id,
+        s.customer_id as "customerId",
+        s.customer_name as "customerName",
+        s.date,
+        s.previous_pending as "previousPending",
+        s.total_sale as "totalSale",
+        s.grand_total as "grandTotal",
+        s.paid_now as "paidNow",
+        s.pending,
+        json_agg(
+          json_build_object(
+            'productName', si.product_name,
+            'quantity', si.quantity,
+            'weight', si.weight,
+            'pricePerKg', si.price_per_kg,
+            'lineTotal', si.line_total
+          )
+        ) as products
       FROM sales s
       LEFT JOIN sale_items si ON s.id = si.sale_id
-      GROUP BY s.id
+      GROUP BY 
+        s.id,
+        s.customer_id,
+        s.customer_name,
+        s.date,
+        s.previous_pending,
+        s.total_sale,
+        s.grand_total,
+        s.paid_now,
+        s.pending
       ORDER BY s.date DESC
     `);
     
     const sales = result.rows.map(row => ({
-      ...row,
+      id: row.id,
+      customerId: row.customerId,
+      customerName: row.customerName || '',
+      date: row.date,
+      previousPending: row.previousPending,
+      totalSale: row.totalSale,
+      grandTotal: row.grandTotal,
+      paidNow: row.paidNow,
+      pending: row.pending,
       products: row.products[0] ? row.products : []
     }));
     
     res.json({ ok: true, sales });
+
   } catch (error) {
     console.error('Sales fetch error:', error);
     res.status(500).json({ ok: false, message: 'Database error' });
@@ -295,21 +343,31 @@ app.delete('/api/sales/:id', async (req, res) => {
       await client.query('BEGIN');
 
       const saleResult = await client.query(`
-        SELECT s.*, 
-               json_agg(
-                 json_build_object(
-                   'productName', si.product_name,
-                   'quantity', si.quantity,
-                   'weight', si.weight,
-                   'pricePerKg', si.price_per_kg,
-                   'lineTotal', si.line_total
-                 )
-               ) as products
+        SELECT 
+          s.id,
+          s.customer_id,
+          s.customer_name,
+          s.previous_pending,
+          s.total_sale,
+          s.grand_total,
+          s.paid_now,
+          s.pending,
+          s.date,
+          json_agg(
+            json_build_object(
+              'productName', si.product_name,
+              'quantity', si.quantity,
+              'weight', si.weight,
+              'pricePerKg', si.price_per_kg,
+              'lineTotal', si.line_total
+            )
+          ) as products
         FROM sales s
         LEFT JOIN sale_items si ON s.id = si.sale_id
         WHERE s.id = $1
         GROUP BY s.id
       `, [id]);
+
 
       if (saleResult.rows.length === 0) {
         await client.query('ROLLBACK');
@@ -321,7 +379,17 @@ app.delete('/api/sales/:id', async (req, res) => {
       await client.query(
         `INSERT INTO recycle_bin_sales (id, customer_id, customer_name, previous_pending, total_sale, grand_total, paid_now, pending, date) 
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-        [sale.id, sale.customer_id, sale.customer_name, sale.previous_pending, sale.total_sale, sale.grand_total, sale.paid_now, sale.pending, sale.date]
+        [
+          sale.id, 
+          sale.customer_id, 
+          sale.customer_name, 
+          sale.previous_pending, 
+          sale.total_sale, 
+          sale.grand_total, 
+          sale.paid_now, 
+          sale.pending, 
+          sale.date
+        ]
       );
 
       await client.query('DELETE FROM sale_items WHERE sale_id = $1', [id]);

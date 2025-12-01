@@ -649,7 +649,7 @@ function Dashboard({ t }) {
             <td>${Number(
               it.lineTotal ||
                 Number(it.quantity || it.qty || 0) *
-                  Number(it.weight || 0) *
+                  
                   Number(it.pricePerKg || it.price || 0)
             ).toFixed(2)}</td>
           </tr>`
@@ -1217,7 +1217,7 @@ function Products({ t }){
           (s, it) =>
             s +
             Number(it.quantity || 0) *
-              Number(it.weight || 0) *
+              
               Number(it.pricePerKg || 0),
           0
         );
@@ -1289,7 +1289,7 @@ function Products({ t }){
             <td>${it.pricePerKg}</td>
             <td>${(
               Number(it.quantity || 0) *
-              Number(it.weight || 0) *
+              
               Number(it.pricePerKg || 0)
             ).toFixed(2)}</td>
           </tr>`
@@ -1481,7 +1481,7 @@ function editSales(index) {
                 <td className="p-2 text-right">
                   {(
                     Number(it.quantity || 0) *
-                    Number(it.weight || 0) *
+                   
                     Number(it.pricePerKg || 0)
                   ).toFixed(2)}
                 </td>
@@ -1992,7 +1992,7 @@ const selectedVendorSummary =
     (s, r) =>
       s +
       Number(r.qty || 0) *
-        Number(r.weight || 0) *
+
         Number(r.pricePerKg || 0),
     0
   );
@@ -2199,7 +2199,7 @@ function editPurchase(index) {
                 <td className="p-2">
                   {(
                     Number(r.qty || 0) *
-                    Number(r.weight || 0) *
+                    
                     Number(r.pricePerKg || 0)
                   ).toFixed(2)}
                 </td>
