@@ -1,7 +1,29 @@
+/* index.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 body {
   @apply bg-slate-100 text-slate-900;
+}
+
+/* Responsive table styles */
+@media (max-width: 640px) {
+  table {
+    font-size: 0.75rem;
+  }
+  
+  td, th {
+    padding: 0.25rem;
+  }
+}
+
+/* Better mobile scrolling */
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent text overflow */
+.whitespace-nowrap {
+  white-space: nowrap;
 }
