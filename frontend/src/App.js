@@ -1,5 +1,6 @@
 // App.js
 import React, { useState, useEffect } from 'react';
+import config from './config';
 
 const STR = {
   en: {
@@ -58,6 +59,27 @@ const STR = {
     login: 'خوش آمدید',
   }
 };
+
+
+// Helper function to make API calls
+const apiCall = async (endpoint, options = {}) => {
+  const url = `${config.apiUrl}${endpoint}`;
+  const defaultOptions = {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  };
+
+  try {
+    const response = await fetch(url, { ...defaultOptions, ...options });
+    return await response.json();
+  } catch (error) {
+    console.error('API call failed:', error);
+    return { ok: false, message: 'Network error' };
+  }
+};
+
+
 
 function App() {
   const [lang, setLang] = useState(localStorage.getItem('erp_lang') || 'en');

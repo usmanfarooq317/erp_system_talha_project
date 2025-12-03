@@ -2,18 +2,38 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const { Pool } = require('pg');
+const path = require('path');
+require('dotenv').config();
 const app = express();
 
-app.use(cors());
+// Configure CORS based on environment
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production' 
+    ? process.env.FRONTEND_URL || 'http://your-ec2-ip-or-domain.com'
+    : 'http://localhost:3000',
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
 app.use(bodyParser.json({ limit: '10mb' }));
 
-// PostgreSQL connection
+// Serve static files from React build in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../frontend/build')));
+  
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
+  });
+}
+
+// PostgreSQL connection with environment variables
 const pool = new Pool({
-  user: 'postgres',
-  host: 'localhost',
-  database: 'erp_system',
-  password: 'usman123', // Change this to your PostgreSQL password
-  port: 5432,
+  user: process.env.DB_USER || 'postgres',
+  host: process.env.DB_HOST || 'localhost',
+  database: process.env.DB_NAME || 'erp_system',
+  password: process.env.DB_PASSWORD || 'usman123',
+  port: process.env.DB_PORT || 5432,
 });
 
 // Test database connection
@@ -35,6 +55,7 @@ async function query(text, params) {
     client.release();
   }
 }
+
 
 // ==============================
 // AUTHENTICATION
@@ -1396,5 +1417,17 @@ app.post('/api/dev/reset-purchases-and-vendors', async (req, res) => {
   }
 });
 
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    ok: true, 
+    message: 'ERP System API is running',
+    environment: process.env.NODE_ENV,
+    timestamp: new Date().toISOString()
+  });
+});
+
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => console.log('ERP backend with PostgreSQL running on port', PORT));
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`ERP backend running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
+  console.log(`Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
+});
